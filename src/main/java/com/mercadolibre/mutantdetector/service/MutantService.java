@@ -13,17 +13,11 @@ public class MutantService implements IMutantService {
 
 	@Override
 	public Boolean isMutant(String[] dna) {
-		Arrays.asList(dna).forEach(i -> {
-			// verificoAdn(i);
-			creoMatriz(dna);
-			throw new ResponseStatusException(HttpStatus.OK, "Error,  la secuencia de adn tiene una letra invalida:' ");
-
-		});
-
-		return null;
+		// verificoAdn(i);zzz
+		return creoMatriz(dna);
 	}
 
-	private void creoMatriz(String[] dna) {
+	private Boolean creoMatriz(String[] dna) {
 		Integer N = dna[0].length();
 		String[][] dnaMatriz = new String[N][N];
 		for (int k = 0; k < N; k++) {
@@ -34,7 +28,96 @@ public class MutantService implements IMutantService {
 			}
 		}
 		System.out.println(Arrays.toString(dnaMatriz));
+		Integer horizlontalAdn = verificoSecuencia(dnaMatriz);
+		Integer verticalAdn = verificoSecuenciaVertical(dnaMatriz);
+		Integer oblicualAdn = verificoSecuenciaOblicua(dnaMatriz);
 
+		if ((horizlontalAdn + verticalAdn + oblicualAdn) >= 2)
+			return true;
+		else
+			return false;
+
+	}
+
+	private Integer verificoSecuencia(String[][] dnaMatriz) {
+		String letra;
+		Integer horizontal = 0;
+		Integer N = 6;
+		for (int k = 0; k < N; k++) {
+			Integer repit = 0;
+			letra = "";
+			for (int l = 0; l < N; l++) {
+				String letraActual = dnaMatriz[k][l];
+				if (letraActual.equals(letra)) {
+					repit++;
+					if (repit == 3) {
+						horizontal++;
+						break;
+					}
+				} else {
+					repit = 0;
+				}
+				letra = letraActual;
+			}
+		}
+		System.out.println("HORIZONTAL: " + horizontal);
+
+		return horizontal;
+	}
+
+	private Integer verificoSecuenciaVertical(String[][] dnaMatriz) {
+		String letra;
+		Integer vertical = 0;
+		Integer N = 6;
+		for (int k = 0; k < N; k++) {
+			Integer repit = 0;
+			letra = "";
+			for (int l = 0; l < N; l++) {
+				String letraActual = dnaMatriz[l][k];
+				if (letraActual.equals(letra)) {
+					repit++;
+					if (repit == 3) {
+						vertical++;
+						break;
+					}
+				} else {
+					repit = 0;
+				}
+				letra = letraActual;
+			}
+		}
+		System.out.println("VERTICAL" + vertical);
+
+		return vertical;
+	}
+
+	private Integer verificoSecuenciaOblicua(String[][] dnaMatriz) {
+		String letra;
+		Integer oblicua = 0;
+		Integer N = 6;
+		for (int k = 0; k < N; k++) {
+			Integer repit = 0;
+			letra = "";
+			for (int l = 0; l < N; l++) {
+				if ((k + l) < N) {
+					String letraActual = dnaMatriz[l][k + l];
+					if (letraActual.equals(letra)) {
+						repit++;
+						if (repit == 3) {
+							oblicua++;
+							break;
+						}
+					} else {
+						repit = 0;
+					}
+					letra = letraActual;
+				}
+
+			}
+		}
+		System.out.println("OBLICUO: " + oblicua);
+
+		return oblicua;
 	}
 
 	private void verificoAdn(String i) {
