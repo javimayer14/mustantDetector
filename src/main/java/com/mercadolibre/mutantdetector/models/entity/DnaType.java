@@ -2,24 +2,20 @@ package com.mercadolibre.mutantdetector.models.entity;
 
 import java.io.Serializable;
 
-import javax.persistence.Column;
 import javax.persistence.Entity;
-import javax.persistence.FetchType;
 import javax.persistence.GeneratedValue;
 import javax.persistence.GenerationType;
 import javax.persistence.Id;
-import javax.persistence.JoinColumn;
-import javax.persistence.ManyToOne;
 import javax.persistence.Table;
 
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import org.springframework.boot.context.properties.ConstructorBinding;
 
 import lombok.Data;
 
 @Data
-@Table(name = "dna")
+@Table(name = "dna_type")
 @Entity
-public class Dna implements Serializable {
+public class DnaType implements Serializable {
 
 	private static final long serialVersionUID = 1L;
 
@@ -27,13 +23,8 @@ public class Dna implements Serializable {
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
 	private Long id;
 	
-	@ManyToOne(fetch=FetchType.LAZY)
-	@JoinColumn(name="type_id")
-	private DnaType dnaType;
+	private String type;
 	
-	@Column(unique = true, length = 256)
-	private String sequence;
-	
-	
+	private String description;
 
 }
