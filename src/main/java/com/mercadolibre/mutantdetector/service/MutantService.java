@@ -19,38 +19,50 @@ import com.mercadolibre.mutantdetector.models.entity.DnaType;
 public class MutantService implements IMutantService {
 
 	public static final String[] DNA_WORDS = { "A", "T", "C", "G" };
+	public static final Integer COINCIDENCE = 3;
+	public static final String GO_DOWN = "DOWN";
+	public static final String GO_RIGTH = "RIGHT";
+	public static final String GO_RIGTH_DIAGONAL = "RIGHT_DIAGONAL";
+	public static final String GO_LEFT_DIAGONAL = "LEFT_DIAGONAL";
 
 	@Autowired
 	IDnaDao dnaDao;
 
+	String[][] matriz;
+	Integer count;
+
+	/**
+	 * <p>
+	 * Metodo que se utiliza para comprobar si una determinada secuencia de ADN
+	 * pertenece a un mutante
+	 * </p>
+	 * 
+	 * @param dna es el dto que tiene dentro la secuencia de adn se pensó asi para
+	 *            incorporar nuevos elementos en el futuro
+	 * @return retorna un booleano que permite saber si es mutante o no
+	 * 
+	 */
 	@Override
 	public Boolean isMutant(DnaDTO dna) {
-		List<String> list = Arrays.asList(dna.getDna());
-		String joinedString = String.join("", list);
-
-		Boolean result = creoMatriz(dna.getDna());
-		Dna dnaEntity = new Dna();
-		dnaEntity.setSequence(joinedString);
-		DnaType dnaType = new DnaType();
-		if (result) {
-			dnaType.setId(1L);
-			dnaEntity.setDnaType(dnaType);
-		} else {
-			dnaType.setId(2L);
-			dnaEntity.setDnaType(dnaType);
-
-		}
-		try {
-			dnaDao.save(dnaEntity);
-		} catch (DataIntegrityViolationException e) {
-			throw new DataIntegrityViolationException("Error, el adn mutante que se quiere ingresar ya está en la DB'");
-
-		}
-
+		String[] sequence = dna.getDna();
+		String[][] matriz = creoMatriz(sequence);
+		Boolean result = deepDna(matriz);
+		saveDna(dna, result);
 		return result;
 	}
 
-	private Boolean creoMatriz(String[] dna) {
+	/**
+	 * <p>
+	 * Metodo que se utiliza para crear una matriz de dos dimensiones para una mejor
+	 * manipulacion de los datos
+	 * </p>
+	 * 
+	 * @param dna es un array donde cada elemento es ua parte de la secuencia del
+	 *            ADN
+	 * @return retorna una matriz de dos direcciones
+	 * 
+	 */
+	private String[][] creoMatriz(String[] dna) {
 		Integer N = dna[0].length();
 		String[][] dnaMatriz = new String[N][N];
 		for (int k = 0; k < N; k++) {
@@ -60,97 +72,109 @@ public class MutantService implements IMutantService {
 				dnaMatriz[k][l] = list[l];
 			}
 		}
-		System.out.println(Arrays.toString(dnaMatriz));
-		Integer horizlontalAdn = verificoSecuencia(dnaMatriz);
-		Integer verticalAdn = verificoSecuenciaVertical(dnaMatriz);
-		Integer oblicualAdn = verificoSecuenciaOblicua(dnaMatriz);
+		this.matriz = dnaMatriz;
+		return dnaMatriz;
 
-		if ((horizlontalAdn + verticalAdn + oblicualAdn) >= 2)
+	}
+
+	/**
+	 * <p>
+	 * Metodo que se utiliza para poder escanear de manera completa la matriz desde
+	 * aquí se llama al metodo recursivo
+	 * </p>
+	 * 
+	 * @param matriz matriz a recorrer
+	 * 
+	 * @return retorna un booleano que permite saber si es mutante o no
+	 * 
+	 */
+	private Boolean deepDna(String[][] matriz) {
+		Integer mutantDna = 0;
+		Integer N = 6;
+		for (int x = 0; x < N; x++) {
+			for (int y = 0; y < N; y++) {
+//				this.count = 0;
+//				if (metodoRecursivo(matriz, GO_DOWN, x, y) >= COINCIDENCE) {
+//					mutantDna++;
+//				}
+				this.count = 0;
+				if (metodoRecursivo(matriz, GO_RIGTH, x, y) >= COINCIDENCE) {
+					mutantDna++;
+				}
+//				this.count = 0;
+//				if (metodoRecursivo(matriz, GO_RIGTH_DIAGONAL, x, y) >= COINCIDENCE) {
+//					mutantDna++;
+//				}
+//				this.count = 0;
+//				if (metodoRecursivo(matriz, GO_LEFT_DIAGONAL, x, y) >= COINCIDENCE) {
+//					mutantDna++;
+//				}
+			}
+		}
+		if (mutantDna >= 2)
 			return true;
 		else
 			return false;
-
 	}
 
-	private Integer verificoSecuencia(String[][] dnaMatriz) {
-		String letra;
-		Integer horizontal = 0;
-		Integer N = 6;
-		for (int k = 0; k < N; k++) {
-			Integer repit = 0;
-			letra = "";
-			for (int l = 0; l < N; l++) {
-				String letraActual = dnaMatriz[k][l];
-				if (letraActual.equals(letra)) {
-					repit++;
-					if (repit == 3) {
-						horizontal++;
-						break;
-					}
-				} else {
-					repit = 0;
-				}
-				letra = letraActual;
-			}
+	/**
+	 * <p>
+	 * Metodo que utiliza la recursividad para verificar desde un punto determinado
+	 * si hay una secuencia de 4 letras iguales (tres coincidencias)
+	 * </p>
+	 * 
+	 * @param dna matriz de dos dimenciones que va a ser recorrida
+	 * @param dna description se utiliza para indicar la direccion en la que será
+	 *            recorrida
+	 * @param x   posicion donde comienza la recursividad (matriz[x][])
+	 * @param x   posicion donde comienza la recursividad (matriz[][y])
+	 * 
+	 * @return retorna la cantidad de veces que se ejecutó la recursivodad
+	 *         (coincidencias)
+	 * 
+	 */
+	private int metodoRecursivo(String[][] matriz, String description, int x, int y) {
+		String currentElement = getElement(matriz, x, y);
+		if (description.equals("DOWN"))
+			x += 1;
+		else if (description.equals("RIGHT"))
+			y += 1;
+		else if (description.equals("RIGHT_DIAGONAL")) {
+			x += 1;
+			y += 1;
+		} else if (description.equals("LEFT_DIAGONAL")) {
+			x += 1;
+			y -= 1;
 		}
-		System.out.println("HORIZONTAL: " + horizontal);
 
-		return horizontal;
+		String element = getElement(matriz, x, y);
+		if (currentElement.equals(element)) {
+			this.count++;
+			return metodoRecursivo(matriz, description, x, y);
+		}
+		return this.count;
 	}
 
-	private Integer verificoSecuenciaVertical(String[][] dnaMatriz) {
-		String letra;
-		Integer vertical = 0;
-		Integer N = 6;
-		for (int k = 0; k < N; k++) {
-			Integer repit = 0;
-			letra = "";
-			for (int l = 0; l < N; l++) {
-				String letraActual = dnaMatriz[l][k];
-				if (letraActual.equals(letra)) {
-					repit++;
-					if (repit == 3) {
-						vertical++;
-						break;
-					}
-				} else {
-					repit = 0;
-				}
-				letra = letraActual;
-			}
+	/**
+	 * <p>
+	 * Metodo que se utiliza para obtener un elemento de una matriz determinada
+	 * </p>
+	 * 
+	 * @param matriz matriz donde se extraerá el elemento
+	 * @param x      posoción 1
+	 * @param y      posoción 2
+	 * 
+	 * @return retorna un booleano que permite saber si es mutante o no
+	 * 
+	 */
+	private String getElement(String[][] matriz, int x, int y) {
+		String element;
+		try {
+			element = matriz[x][y];
+		} catch (Exception e) {
+			element = "";
 		}
-		System.out.println("VERTICAL" + vertical);
-
-		return vertical;
-	}
-
-	private Integer verificoSecuenciaOblicua(String[][] dnaMatriz) {
-		String letra;
-		Integer oblicua = 0;
-		Integer N = 6;
-		for (int k = 0; k < N; k++) {
-			Integer repit = 0;
-			letra = "";
-			for (int l = 0; l < N; l++) {
-				if ((k + l) < N) {
-					String letraActual = dnaMatriz[l][k + l];
-					if (letraActual.equals(letra)) {
-						repit++;
-						if (repit == 3) {
-							oblicua++;
-							break;
-						}
-					} else {
-						repit = 0;
-					}
-					letra = letraActual;
-				}
-
-			}
-		}
-		System.out.println("OBLICUO: " + oblicua);
-
-		return oblicua;
+		return element;
 	}
 
 	private void verificoAdn(String i) {
@@ -162,6 +186,14 @@ public class MutantService implements IMutantService {
 		});
 	}
 
+	/**
+	 * <p>
+	 * Metodo genera las estadisicas a partir de los datos en la DB
+	 * </p>
+	 * 
+	 * @return retorna un dto con las estadisticas
+	 * 
+	 */
 	@Override
 	public StatDTO stats() {
 		List<Dna> allDna = (List<Dna>) dnaDao.findAll();
@@ -181,4 +213,37 @@ public class MutantService implements IMutantService {
 		stat.setRatio(ratio);
 		return stat;
 	}
+
+	/**
+	 * <p>
+	 * Metodo que se utiliza para guardar la secuencia de ADN independientemente si
+	 * es mutante o no
+	 * </p>
+	 * 
+	 * @param dna      secuencia de ADN
+	 * @param isMutant parametro que permite determinar que tipo de ADN es *
+	 */
+	private void saveDna(DnaDTO dna, Boolean isMutant) {
+		List<String> list = Arrays.asList(dna.getDna());
+		String joinedString = String.join("", list);
+
+		Dna dnaEntity = new Dna();
+		dnaEntity.setSequence(joinedString);
+		DnaType dnaType = new DnaType();
+		if (isMutant) {
+			dnaType.setId(1L);
+			dnaEntity.setDnaType(dnaType);
+		} else {
+			dnaType.setId(2L);
+			dnaEntity.setDnaType(dnaType);
+
+		}
+		try {
+			dnaDao.save(dnaEntity);
+		} catch (DataIntegrityViolationException e) {
+			throw new DataIntegrityViolationException("Error, el adn mutante que se quiere ingresar ya está en la DB'");
+
+		}
+	}
+
 }

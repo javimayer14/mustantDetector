@@ -8,10 +8,12 @@ import javax.persistence.GenerationType;
 import javax.persistence.Id;
 import javax.persistence.Table;
 
-import org.springframework.boot.context.properties.ConstructorBinding;
-
 import lombok.Data;
 
+/**
+ * Entidad que representa el tipo de adn.
+ * 
+ */
 @Data
 @Table(name = "dna_type")
 @Entity
@@ -22,9 +24,9 @@ public class DnaType implements Serializable {
 	@Id
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
 	private Long id;
-	
+
 	private String type;
-	
+
 	private String description;
 
 }

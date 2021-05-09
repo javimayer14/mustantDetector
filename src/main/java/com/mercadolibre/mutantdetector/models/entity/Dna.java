@@ -12,10 +12,12 @@ import javax.persistence.JoinColumn;
 import javax.persistence.ManyToOne;
 import javax.persistence.Table;
 
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
-
 import lombok.Data;
 
+/**
+ * Entidad que representa el adn.
+ * 
+ */
 @Data
 @Table(name = "dna")
 @Entity
@@ -26,14 +28,12 @@ public class Dna implements Serializable {
 	@Id
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
 	private Long id;
-	
-	@ManyToOne(fetch=FetchType.LAZY)
-	@JoinColumn(name="type_id")
+
+	@ManyToOne(fetch = FetchType.LAZY)
+	@JoinColumn(name = "type_id")
 	private DnaType dnaType;
-	
+
 	@Column(unique = true, length = 256)
 	private String sequence;
-	
-	
 
 }
