@@ -15,10 +15,17 @@ import com.mercadolibre.mutantdetector.models.dto.StatDTO;
 import com.mercadolibre.mutantdetector.models.entity.Dna;
 import com.mercadolibre.mutantdetector.models.entity.DnaType;
 
+/**
+ * MutantService implementacion.
+ * 
+ */
+
 @Service
 public class MutantService implements IMutantService {
 
 	public static final String[] DNA_WORDS = { "A", "T", "C", "G" };
+	public static final String DNA_INVALID_WORD = "Error,  la secuencia de adn tiene una letra invalida:' ";
+	public static final String DNA_DATA_INTEGRITY_ERROR = "Error, el adn mutante que se quiere ingresar ya está en la DB'";
 	public static final Integer COINCIDENCE = 3;
 	public static final String GO_DOWN = "DOWN";
 	public static final String GO_RIGTH = "RIGHT";
@@ -28,7 +35,6 @@ public class MutantService implements IMutantService {
 	@Autowired
 	IDnaDao dnaDao;
 
-	String[][] matriz;
 	Integer count;
 
 	/**
@@ -45,34 +51,36 @@ public class MutantService implements IMutantService {
 	@Override
 	public Boolean isMutant(DnaDTO dna) {
 		String[] sequence = dna.getDna();
-		String[][] matriz = creoMatriz(sequence);
-		Boolean result = deepDna(matriz);
-		saveDna(dna, result);
-		return result;
+		String[][] matriz = createMatriz(sequence);
+		Boolean isMutant = deepDna(matriz);
+		saveDna(dna, isMutant);
+		return isMutant;
 	}
 
 	/**
 	 * <p>
 	 * Metodo que se utiliza para crear una matriz de dos dimensiones para una mejor
-	 * manipulacion de los datos
+	 * manipulacion de los datos.Además verifica que sea una secuencia de ADN valida
+	 * (A,T,C,G)
 	 * </p>
 	 * 
-	 * @param dna es un array donde cada elemento es ua parte de la secuencia del
+	 * @param dna es un array donde cada elemento es una parte de la secuencia del
 	 *            ADN
 	 * @return retorna una matriz de dos direcciones
 	 * 
 	 */
-	private String[][] creoMatriz(String[] dna) {
+	private String[][] createMatriz(String[] dna) {
 		Integer N = dna[0].length();
 		String[][] dnaMatriz = new String[N][N];
 		for (int k = 0; k < N; k++) {
 			for (int l = 0; l < N; l++) {
 				String row = dna[k];
 				String[] list = row.split("");
+				if (!Arrays.stream(DNA_WORDS).anyMatch(list[l]::equals))
+					throw new ResponseStatusException(HttpStatus.BAD_REQUEST, DNA_INVALID_WORD + list[l]);
 				dnaMatriz[k][l] = list[l];
 			}
 		}
-		this.matriz = dnaMatriz;
 		return dnaMatriz;
 
 	}
@@ -94,19 +102,19 @@ public class MutantService implements IMutantService {
 		for (int x = 0; x < N; x++) {
 			for (int y = 0; y < N; y++) {
 //				this.count = 0;
-//				if (metodoRecursivo(matriz, GO_DOWN, x, y) >= COINCIDENCE) {
+//				if (recursiveScan(matriz, GO_DOWN, x, y) >= COINCIDENCE) {
 //					mutantDna++;
 //				}
 				this.count = 0;
-				if (metodoRecursivo(matriz, GO_RIGTH, x, y) >= COINCIDENCE) {
+				if (recursiveScan(matriz, GO_RIGTH, x, y) >= COINCIDENCE) {
 					mutantDna++;
 				}
 //				this.count = 0;
-//				if (metodoRecursivo(matriz, GO_RIGTH_DIAGONAL, x, y) >= COINCIDENCE) {
+//				if (recursiveScan(matriz, GO_RIGTH_DIAGONAL, x, y) >= COINCIDENCE) {
 //					mutantDna++;
 //				}
 //				this.count = 0;
-//				if (metodoRecursivo(matriz, GO_LEFT_DIAGONAL, x, y) >= COINCIDENCE) {
+//				if (recursiveScan(matriz, GO_LEFT_DIAGONAL, x, y) >= COINCIDENCE) {
 //					mutantDna++;
 //				}
 			}
@@ -133,24 +141,23 @@ public class MutantService implements IMutantService {
 	 *         (coincidencias)
 	 * 
 	 */
-	private int metodoRecursivo(String[][] matriz, String description, int x, int y) {
+	private int recursiveScan(String[][] matriz, String description, int x, int y) {
 		String currentElement = getElement(matriz, x, y);
-		if (description.equals("DOWN"))
+		if (description.equals(GO_DOWN))
 			x += 1;
-		else if (description.equals("RIGHT"))
+		else if (description.equals(GO_RIGTH))
 			y += 1;
-		else if (description.equals("RIGHT_DIAGONAL")) {
+		else if (description.equals(GO_RIGTH_DIAGONAL)) {
 			x += 1;
 			y += 1;
-		} else if (description.equals("LEFT_DIAGONAL")) {
+		} else if (description.equals(GO_LEFT_DIAGONAL)) {
 			x += 1;
 			y -= 1;
 		}
-
 		String element = getElement(matriz, x, y);
 		if (currentElement.equals(element)) {
 			this.count++;
-			return metodoRecursivo(matriz, description, x, y);
+			return recursiveScan(matriz, description, x, y);
 		}
 		return this.count;
 	}
@@ -177,15 +184,6 @@ public class MutantService implements IMutantService {
 		return element;
 	}
 
-	private void verificoAdn(String i) {
-		String[] list = i.split("");
-		Arrays.stream(list).forEach(j -> {
-			if (!Arrays.stream(DNA_WORDS).anyMatch(j::equals))
-				throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-						"Error,  la secuencia de adn tiene una letra invalida:' " + j);
-		});
-	}
-
 	/**
 	 * <p>
 	 * Metodo genera las estadisicas a partir de los datos en la DB
@@ -206,7 +204,11 @@ public class MutantService implements IMutantService {
 			if (type == 2)
 				mutants++;
 		}
-		Float ratio = (float) (mutants / humans);
+		Float ratio;
+		if (humans == null || humans == 0)
+			ratio = (float) mutants;
+		else
+			ratio = (float) (mutants / humans);
 		StatDTO stat = new StatDTO();
 		stat.setCountHumanDna(humans);
 		stat.setCountMutantDna(mutants);
@@ -231,17 +233,17 @@ public class MutantService implements IMutantService {
 		dnaEntity.setSequence(joinedString);
 		DnaType dnaType = new DnaType();
 		if (isMutant) {
-			dnaType.setId(1L);
+			dnaType.setId(2L);
 			dnaEntity.setDnaType(dnaType);
 		} else {
-			dnaType.setId(2L);
+			dnaType.setId(1L);
 			dnaEntity.setDnaType(dnaType);
 
 		}
 		try {
 			dnaDao.save(dnaEntity);
 		} catch (DataIntegrityViolationException e) {
-			throw new DataIntegrityViolationException("Error, el adn mutante que se quiere ingresar ya está en la DB'");
+			throw new DataIntegrityViolationException(DNA_DATA_INTEGRITY_ERROR);
 
 		}
 	}

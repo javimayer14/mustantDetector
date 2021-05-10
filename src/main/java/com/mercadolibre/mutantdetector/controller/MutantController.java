@@ -4,7 +4,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -21,6 +20,13 @@ public class MutantController {
 	@Autowired
 	private IMutantService mutantService;
 
+	/**
+	 * Retorna an ResponseEntity dependiendo ADN.
+	 * 
+	 * @param Json obect wrapped por DnaDTO
+	 * @return ResponseEntity
+	 */
+
 	@PostMapping("/mutant")
 	public ResponseEntity<String> index(@RequestBody DnaDTO dna) {
 		if (mutantService.isMutant(dna))
@@ -30,26 +36,15 @@ public class MutantController {
 
 	}
 
+	/**
+	 * Retorna StatDTO con las estadisticas de los ADN.
+	 * 
+	 * @return Json Object
+	 */
 	@GetMapping("/stats")
 	public ResponseEntity<StatDTO> stats() {
 		StatDTO result = mutantService.stats();
 		return new ResponseEntity<StatDTO>(result, HttpStatus.OK);
-	}
-
-	@GetMapping("/factorial/{f}")
-	public Integer factorial(@PathVariable Integer f) {
-		metodoRecursivo(f);
-		return f;
-	}
-
-	private int metodoRecursivo(Integer f) {
-		System.out.println(f);
-		if (f > 0) {
-			int result = f * metodoRecursivo(f-1);
-			return result;
-		}else {
-			return 1;
-		}
 	}
 
 }
