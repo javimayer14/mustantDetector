@@ -92,7 +92,6 @@ class MutantDetectorApplicationTests {
 	@Test
 	void stats() {
 		List<Dna> dnaList = new ArrayList<>();
-		Dna dna = new Dna();
 //		when(dnaDao.findAll()
 //        .thenAnswer(i -> i.getArguments()[0]);
 		StatDTO stats = mutantService.stats();
