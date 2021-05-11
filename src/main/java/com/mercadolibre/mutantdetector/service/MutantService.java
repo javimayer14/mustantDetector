@@ -2,7 +2,10 @@ package com.mercadolibre.mutantdetector.service;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.Objects;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
@@ -19,18 +22,21 @@ import com.mercadolibre.mutantdetector.models.entity.DnaType;
  * MutantService implementacion.
  * 
  */
-
 @Service
 public class MutantService implements IMutantService {
 
 	public static final String[] DNA_WORDS = { "A", "T", "C", "G" };
-	public static final String DNA_INVALID_WORD = "Error,  la secuencia de adn tiene una letra invalida:' ";
+	public static final String DNA_NULL = "Error, la secuencia de adn está vacia o es null:' ";
+	public static final String DNA_ELEMENT_NULL = "Error, uno de los elementos de la secuencia de adn es null:' ";
+	public static final String DNA_INVALID_WORD = "Error, la secuencia de adn tiene una letra invalida:' ";
 	public static final String DNA_DATA_INTEGRITY_ERROR = "Error, el adn mutante que se quiere ingresar ya está en la DB'";
-	public static final Integer COINCIDENCE = 3;
+	public static final String INVALID_SEQUENCE = "Error, la matriz no es simetrica' ";
 	public static final String GO_DOWN = "DOWN";
 	public static final String GO_RIGTH = "RIGHT";
 	public static final String GO_RIGTH_DIAGONAL = "RIGHT_DIAGONAL";
 	public static final String GO_LEFT_DIAGONAL = "LEFT_DIAGONAL";
+	public static final Integer COINCIDENCE = 3;
+	private static final Logger logger = LoggerFactory.getLogger(MutantService.class);
 
 	@Autowired
 	IDnaDao dnaDao;
@@ -61,7 +67,8 @@ public class MutantService implements IMutantService {
 	 * <p>
 	 * Metodo que se utiliza para crear una matriz de dos dimensiones para una mejor
 	 * manipulacion de los datos.Además verifica que sea una secuencia de ADN valida
-	 * (A,T,C,G)
+	 * (A,T,C,G), que sea simetrica y que no esté vacia. Tambien se evalua si un
+	 * elemento dentro del array es null.
 	 * </p>
 	 * 
 	 * @param dna es un array donde cada elemento es una parte de la secuencia del
@@ -70,25 +77,33 @@ public class MutantService implements IMutantService {
 	 * 
 	 */
 	private String[][] createMatriz(String[] dna) {
+		logger.info("Creando matriz bidimensional...");
+		if (dna == null || dna.length == 0)
+			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, DNA_NULL);
+		Boolean containNull = Arrays.stream(dna).allMatch(Objects::nonNull);
+		if (!containNull)
+			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, DNA_ELEMENT_NULL);
 		Integer N = dna[0].length();
 		String[][] dnaMatriz = new String[N][N];
 		for (int k = 0; k < N; k++) {
 			for (int l = 0; l < N; l++) {
 				String row = dna[k];
-				String[] list = row.split("");
-				if (!Arrays.stream(DNA_WORDS).anyMatch(list[l]::equals))
-					throw new ResponseStatusException(HttpStatus.BAD_REQUEST, DNA_INVALID_WORD + list[l]);
-				dnaMatriz[k][l] = list[l];
+				String[] matrizElements = row.split("");
+				if (!Arrays.stream(DNA_WORDS).anyMatch(matrizElements[l]::equals))
+					throw new ResponseStatusException(HttpStatus.BAD_REQUEST, DNA_INVALID_WORD + matrizElements[l]);
+				if (matrizElements.length != N)
+					throw new ResponseStatusException(HttpStatus.BAD_REQUEST, INVALID_SEQUENCE);
+				dnaMatriz[k][l] = matrizElements[l];
 			}
 		}
+		logger.info("Matriz bidimensional creada con exito");
 		return dnaMatriz;
-
 	}
 
 	/**
 	 * <p>
 	 * Metodo que se utiliza para poder escanear de manera completa la matriz desde
-	 * aquí se llama al metodo recursivo
+	 * aquí se llama al metodo recursivo 
 	 * </p>
 	 * 
 	 * @param matriz matriz a recorrer
@@ -97,32 +112,36 @@ public class MutantService implements IMutantService {
 	 * 
 	 */
 	private Boolean deepDna(String[][] matriz) {
+		logger.info("Inicia recorrido matriz");
 		Integer mutantDna = 0;
-		Integer N = 6;
+		Integer N = matriz[0].length;
 		for (int x = 0; x < N; x++) {
 			for (int y = 0; y < N; y++) {
-//				this.count = 0;
-//				if (recursiveScan(matriz, GO_DOWN, x, y) >= COINCIDENCE) {
-//					mutantDna++;
-//				}
 				this.count = 0;
-				if (recursiveScan(matriz, GO_RIGTH, x, y) >= COINCIDENCE) {
+				if (recursiveScan(matriz, GO_DOWN, x, y)) {
 					mutantDna++;
+					matriz[x + COINCIDENCE][y] = "X";
 				}
-//				this.count = 0;
-//				if (recursiveScan(matriz, GO_RIGTH_DIAGONAL, x, y) >= COINCIDENCE) {
-//					mutantDna++;
-//				}
-//				this.count = 0;
-//				if (recursiveScan(matriz, GO_LEFT_DIAGONAL, x, y) >= COINCIDENCE) {
-//					mutantDna++;
-//				}
+				this.count = 0;
+				if (recursiveScan(matriz, GO_RIGTH, x, y)) {
+					mutantDna ++;
+					matriz[x][y + COINCIDENCE] = "X";
+				}
+				this.count = 0;
+				if (recursiveScan(matriz, GO_RIGTH_DIAGONAL, x, y)) {
+					mutantDna ++;
+					matriz[x + COINCIDENCE][y + COINCIDENCE] = "X";
+
+				}
+				this.count = 0;
+				if (recursiveScan(matriz, GO_LEFT_DIAGONAL, x, y)) {
+					mutantDna ++;
+					matriz[x - COINCIDENCE][y - COINCIDENCE] = "X";
+				}
 			}
 		}
-		if (mutantDna >= 2)
-			return true;
-		else
-			return false;
+		logger.info("Finaliza recorrido matriz");
+		return sequenceCount(mutantDna);
 	}
 
 	/**
@@ -141,7 +160,7 @@ public class MutantService implements IMutantService {
 	 *         (coincidencias)
 	 * 
 	 */
-	private int recursiveScan(String[][] matriz, String description, int x, int y) {
+	private Boolean recursiveScan(String[][] matriz, String description, int x, int y) {
 		String currentElement = getElement(matriz, x, y);
 		if (description.equals(GO_DOWN))
 			x += 1;
@@ -157,9 +176,12 @@ public class MutantService implements IMutantService {
 		String element = getElement(matriz, x, y);
 		if (currentElement.equals(element)) {
 			this.count++;
+			if (count == COINCIDENCE)
+				return true;
 			return recursiveScan(matriz, description, x, y);
 		}
-		return this.count;
+		logger.info("Finaliza recursividad");
+		return false;
 	}
 
 	/**
@@ -194,6 +216,7 @@ public class MutantService implements IMutantService {
 	 */
 	@Override
 	public StatDTO stats() {
+		logger.info("Analizando estadisticas");
 		List<Dna> allDna = (List<Dna>) dnaDao.findAll();
 		Long humans = 0L;
 		Long mutants = 0L;
@@ -208,11 +231,12 @@ public class MutantService implements IMutantService {
 		if (humans == null || humans == 0)
 			ratio = (float) mutants;
 		else
-			ratio = (float) (mutants / humans);
+			ratio = ((float) ((float) mutants / (float) humans));
 		StatDTO stat = new StatDTO();
 		stat.setCountHumanDna(humans);
 		stat.setCountMutantDna(mutants);
 		stat.setRatio(ratio);
+		logger.info("finaliza estadisticas");
 		return stat;
 	}
 
@@ -226,9 +250,9 @@ public class MutantService implements IMutantService {
 	 * @param isMutant parametro que permite determinar que tipo de ADN es *
 	 */
 	private void saveDna(DnaDTO dna, Boolean isMutant) {
+		logger.info("Guardando adn...");
 		List<String> list = Arrays.asList(dna.getDna());
 		String joinedString = String.join("", list);
-
 		Dna dnaEntity = new Dna();
 		dnaEntity.setSequence(joinedString);
 		DnaType dnaType = new DnaType();
@@ -242,10 +266,18 @@ public class MutantService implements IMutantService {
 		}
 		try {
 			dnaDao.save(dnaEntity);
+			logger.info("ADN guardado con exito");
 		} catch (DataIntegrityViolationException e) {
-			throw new DataIntegrityViolationException(DNA_DATA_INTEGRITY_ERROR);
-
+			throw new ResponseStatusException(HttpStatus.CONFLICT, DNA_DATA_INTEGRITY_ERROR);
 		}
+	}
+	
+
+	private Boolean sequenceCount(Integer mutantDna) {
+		if (mutantDna >= 2)
+			return true;
+		else
+			return false;
 	}
 
 }
