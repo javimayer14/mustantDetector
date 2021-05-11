@@ -19,8 +19,12 @@ En caso de contener caracteres no válidos, se devuelve un Status BAD_REQUEST.
 ```
 git clone https://github.com/javimayer14/mutantDetector.git
 ```
+- El IDE que se utilice para visualizar el codigo debe tener instalado la herramienta lombok
+```
+https://projectlombok.org/download
+```
 - Debe crearse una base de datos en MySQL con nombre "mutant_db".
-- Para facilitar la creación se recomienda crear un contenedor de la siguiente manera
+- Para facilitar la creación de la DB se recomienda crear un contenedor de la siguiente manera
 ```
 sudo docker run --name mutant_db -e MYSQL_ROOT_PASSWORD=root -e MYSQL_USER=root -e MYSQL_PASSWORD=root -p 3306:3306  -d mysql:8
 ```
