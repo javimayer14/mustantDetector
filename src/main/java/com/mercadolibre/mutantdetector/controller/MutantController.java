@@ -29,7 +29,7 @@ public class MutantController {
 
 	@PostMapping("/mutant")
 	public ResponseEntity<String> index(@RequestBody DnaDTO dna) {
-		if (mutantService.isMutant(dna))
+		if (Boolean.TRUE.equals(mutantService.isMutant(dna)))
 			return new ResponseEntity<>("El ADN es de mutante !", HttpStatus.OK);
 		else
 			return new ResponseEntity<>("El ADN no es de mutante", HttpStatus.FORBIDDEN);
@@ -44,7 +44,7 @@ public class MutantController {
 	@GetMapping("/stats")
 	public ResponseEntity<StatDTO> stats() {
 		StatDTO result = mutantService.stats();
-		return new ResponseEntity<StatDTO>(result, HttpStatus.OK);
+		return new ResponseEntity<>(result, HttpStatus.OK);
 	}
 
 }

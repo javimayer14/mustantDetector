@@ -36,6 +36,8 @@ public class MutantService implements IMutantService {
 	public static final String GO_RIGTH_DIAGONAL = "RIGHT_DIAGONAL";
 	public static final String GO_LEFT_DIAGONAL = "LEFT_DIAGONAL";
 	public static final Integer COINCIDENCE = 3;
+	public static final Long MUTANT_ID = 2L;
+	public static final Long HUMAN_ID = 1L;
 	private static final Logger logger = LoggerFactory.getLogger(MutantService.class);
 
 	@Autowired
@@ -81,17 +83,19 @@ public class MutantService implements IMutantService {
 		if (dna == null || dna.length == 0)
 			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, DNA_NULL);
 		Boolean containNull = Arrays.stream(dna).allMatch(Objects::nonNull);
-		if (!containNull)
+		if (Boolean.TRUE.equals(!containNull))
 			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, DNA_ELEMENT_NULL);
-		Integer N = dna[0].length();
-		String[][] dnaMatriz = new String[N][N];
-		for (int k = 0; k < N; k++) {
-			for (int l = 0; l < N; l++) {
+		if (dna.length != dna[0].length())
+			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, INVALID_SEQUENCE);
+		Integer n = dna[0].length();
+		String[][] dnaMatriz = new String[n][n];
+		for (int k = 0; k < n; k++) {
+			for (int l = 0; l < n; l++) {
 				String row = dna[k];
 				String[] matrizElements = row.split("");
 				if (!Arrays.stream(DNA_WORDS).anyMatch(matrizElements[l]::equals))
 					throw new ResponseStatusException(HttpStatus.BAD_REQUEST, DNA_INVALID_WORD + matrizElements[l]);
-				if (matrizElements.length != N)
+				if (matrizElements.length != n)
 					throw new ResponseStatusException(HttpStatus.BAD_REQUEST, INVALID_SEQUENCE);
 				dnaMatriz[k][l] = matrizElements[l];
 			}
@@ -103,7 +107,7 @@ public class MutantService implements IMutantService {
 	/**
 	 * <p>
 	 * Metodo que se utiliza para poder escanear de manera completa la matriz desde
-	 * aquí se llama al metodo recursivo 
+	 * aquí se llama al metodo recursivo
 	 * </p>
 	 * 
 	 * @param matriz matriz a recorrer
@@ -114,29 +118,29 @@ public class MutantService implements IMutantService {
 	private Boolean deepDna(String[][] matriz) {
 		logger.info("Inicia recorrido matriz");
 		Integer mutantDna = 0;
-		Integer N = matriz[0].length;
-		for (int x = 0; x < N; x++) {
-			for (int y = 0; y < N; y++) {
+		Integer n = matriz[0].length;
+		for (int x = 0; x < n; x++) {
+			for (int y = 0; y < n; y++) {
 				this.count = 0;
-				if (recursiveScan(matriz, GO_DOWN, x, y)) {
+				if (Boolean.TRUE.equals(recursiveScan(matriz, GO_RIGTH, x, y))) {
 					mutantDna++;
-					matriz[x + COINCIDENCE][y] = "X";
+					disableElements(matriz, GO_RIGTH, x, y);
 				}
 				this.count = 0;
-				if (recursiveScan(matriz, GO_RIGTH, x, y)) {
-					mutantDna ++;
-					matriz[x][y + COINCIDENCE] = "X";
+				if (Boolean.TRUE.equals(recursiveScan(matriz, GO_DOWN, x, y))) {
+					mutantDna++;
+					disableElements(matriz, GO_DOWN, x, y);
 				}
 				this.count = 0;
-				if (recursiveScan(matriz, GO_RIGTH_DIAGONAL, x, y)) {
-					mutantDna ++;
-					matriz[x + COINCIDENCE][y + COINCIDENCE] = "X";
+				if (Boolean.TRUE.equals(recursiveScan(matriz, GO_RIGTH_DIAGONAL, x, y))) {
+					mutantDna++;
+					disableElements(matriz, GO_RIGTH_DIAGONAL, x, y);
 
 				}
 				this.count = 0;
-				if (recursiveScan(matriz, GO_LEFT_DIAGONAL, x, y)) {
-					mutantDna ++;
-					matriz[x - COINCIDENCE][y - COINCIDENCE] = "X";
+				if (Boolean.TRUE.equals(recursiveScan(matriz, GO_LEFT_DIAGONAL, x, y))) {
+					mutantDna++;
+					disableElements(matriz, GO_LEFT_DIAGONAL, x, y);
 				}
 			}
 		}
@@ -151,10 +155,10 @@ public class MutantService implements IMutantService {
 	 * </p>
 	 * 
 	 * @param dna matriz de dos dimenciones que va a ser recorrida
-	 * @param dna description se utiliza para indicar la direccion en la que será
+	 * @param description description se utiliza para indicar la direccion en la que será
 	 *            recorrida
 	 * @param x   posicion donde comienza la recursividad (matriz[x][])
-	 * @param x   posicion donde comienza la recursividad (matriz[][y])
+	 * @param y   posicion donde comienza la recursividad (matriz[][y])
 	 * 
 	 * @return retorna la cantidad de veces que se ejecutó la recursivodad
 	 *         (coincidencias)
@@ -176,7 +180,7 @@ public class MutantService implements IMutantService {
 		String element = getElement(matriz, x, y);
 		if (currentElement.equals(element)) {
 			this.count++;
-			if (count == COINCIDENCE)
+			if (count.equals(COINCIDENCE))
 				return true;
 			return recursiveScan(matriz, description, x, y);
 		}
@@ -222,9 +226,9 @@ public class MutantService implements IMutantService {
 		Long mutants = 0L;
 		for (Dna d : allDna) {
 			Long type = d.getDnaType().getId();
-			if (type == 1)
+			if (type.equals(HUMAN_ID))
 				humans++;
-			if (type == 2)
+			if (type.equals(MUTANT_ID))
 				mutants++;
 		}
 		Float ratio;
@@ -257,10 +261,10 @@ public class MutantService implements IMutantService {
 		dnaEntity.setSequence(joinedString);
 		DnaType dnaType = new DnaType();
 		if (isMutant) {
-			dnaType.setId(2L);
+			dnaType.setId(MUTANT_ID);
 			dnaEntity.setDnaType(dnaType);
 		} else {
-			dnaType.setId(1L);
+			dnaType.setId(HUMAN_ID);
 			dnaEntity.setDnaType(dnaType);
 
 		}
@@ -271,7 +275,46 @@ public class MutantService implements IMutantService {
 			throw new ResponseStatusException(HttpStatus.CONFLICT, DNA_DATA_INTEGRITY_ERROR);
 		}
 	}
-	
+
+	/**
+	 * <p>
+	 * Metodo que utiliza la deshabilitar los elementos de la matriz cuando se
+	 * encuentra una secuencia mutante. Al deshabilitar los elementos que componen la
+	 * secuencia de cuatro letras (se deshabilita cambiando laa letra) nos
+	 * aseguramos que no se utilice dentro de otra secuencia
+	 * </p>
+	 * 
+	 * @param dna       matriz de dos dimenciones donde 4 elementos van a ser
+	 *                  deshabilitados
+	 * @param direction se utiliza para indicar la direccion en la que se encuetra
+	 *                  la secuencia
+	 * @param x         posicion donde comienza la recursividad (matriz[x][])
+	 * @param y         posicion donde comienza la recursividad (matriz[][y])
+	 * 
+	 * 
+	 */
+	private void disableElements(String[][] matriz, String direction, int x, int y) {
+		if (direction.equals(GO_RIGTH)) {
+			for (int j = 0; j <= COINCIDENCE; j++) {
+				matriz[x][y + j] = "H";
+			}
+		}
+		if (direction.equals(GO_DOWN)) {
+			for (int j = 0; j <= COINCIDENCE; j++) {
+				matriz[x + j][y] = "V";
+			}
+		}
+		if (direction.equals(GO_RIGTH_DIAGONAL)) {
+			for (int j = 0; j <= COINCIDENCE; j++) {
+				matriz[x + j][y + j] = "D";
+			}
+		}
+		if (direction.equals(GO_LEFT_DIAGONAL)) {
+			for (int j = 0; j <= COINCIDENCE; j++) {
+				matriz[x + j][y - j] = "X";
+			}
+		}
+	}
 
 	private Boolean sequenceCount(Integer mutantDna) {
 		if (mutantDna >= 2)
